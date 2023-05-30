@@ -252,3 +252,68 @@ full_pipeline = ColumnTransformer([
 ])
 
 housing_prepared = full_pipeline.fit_transform(housing)
+
+print(housing_prepared)
+
+### SELECT AND TRAIN A MODEL
+
+from sklearn.linear_model import LinearRegression
+
+lin_reg = LinearRegression()
+lin_reg.fit(housing_prepared, housing_labels)
+
+# Let's try it out on a few instances from the begining
+
+some_data = housing.iloc[:5]
+some_labels = housing_labels.iloc[:5]
+some_data_prepared = full_pipeline.transform(some_data)
+print("Predictions:", lin_reg.predict(some_data_prepared))
+
+print("Labels:", list(some_labels))
+
+## LET'S MEASURE THIS REGRESSION MODEL'S RMSE ON THE WHOLE TRAINING SET USING SCIKIT-LEARN'S MEAN_SQUARED_ERROR()
+
+from sklearn.metrics import mean_squared_error
+
+housing_predictions = lin_reg.predict(housing_prepared)
+lin_mse = mean_squared_error(housing_labels, housing_predictions)
+lin_rmse = np.sqrt(lin_mse)
+print("RMSE:", lin_rmse)
+
+# Let's use a powerful model - DECISION TREE MODEL
+
+from sklearn.tree import DecisionTreeRegressor
+
+tree_reg = DecisionTreeRegressor()
+tree_reg.fit(housing_prepared, housing_labels)
+
+## Let's evaluate it
+housing_predictions = tree_reg.predict(housing_prepared)
+tree_mse = mean_squared_error(housing_labels, housing_predictions)
+tree_rmse = np.sqrt(tree_mse)
+print("DECISION TREE RMSE:", tree_rmse)
+
+## Let's randomly splits the training set into 10 distinct subset called 'folds'
+## Then it trains and evaluates the Decision Tree model 10 times,
+# picking a different fold for evaluation every time and training on the other 9 folds. The result is an array containing the 10 evaluation socres:
+
+from sklearn.model_selection import cross_val_score
+
+scores = cross_val_score(tree_reg, housing_prepared, housing_labels,
+                         scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-scores)
+
+
+def display_scores(scores):
+    print("Scores:", scores)
+    print("Mean:", scores.mean())
+    print("Standard deviation:", scores.std())
+
+
+display_scores(tree_rmse_scores)
+
+## lETS COMPUTE THE SAME SCORES FOR THE LINEAR REGRESSION MODEL JUST TO BE SURE
+lin_scores = cross_val_score(lin_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+
+lin_rmse_scores = np.sqrt(-lin_scores)
+display_scores(lin_rmse_scores)
