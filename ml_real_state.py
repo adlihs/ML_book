@@ -376,5 +376,6 @@ extra_attribs = ["rooms_per_hhold","pop_per_hhold","bedrooms_per_room"]
 cat_encoder = full_pipeline.named_transformers_["cat"]
 cat_one_hot_attribs = list(cat_encoder.categories_[0])
 attributes = num_attribs + extra_attribs + cat_one_hot_attribs
-sorted(zip(feature_importances, attributes), reverse=True)
+print(sorted(zip(feature_importances, attributes), reverse=True))
 
+###### EVALUATE YOUR SYSTEM ON THE TEST SET
