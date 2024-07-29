@@ -103,14 +103,14 @@ housing = strat_train_set.copy()
 
 ### Visualizing geographical data
 housing.plot(kind="scatter", x="longitude", y="latitude", alpha=0.1)
-# plt.show()
+#plt.show()
 
 ### Visualizing the housing prices
 housing.plot(kind="scatter", x="longitude", y="latitude", alpha=0.4,
              s=housing["population"] / 100, label="population", figsize=(10, 7),
              c="median_house_value", cmap=plt.get_cmap("jet"), colorbar=True)
 plt.legend()
-# plt.show()
+#plt.show()
 
 ### Looking for correlations
 corr_matrix = housing.corr()
@@ -124,13 +124,13 @@ attributes = ["median_house_value", "median_income", "total_rooms",
               "housing_median_age"]
 
 scatter_matrix(housing[attributes], figsize=(12, 8))
-# plt.show()
+#plt.show()
 
 
 ### Zoom in the median income correlation scatterplot
 housing.plot(kind="scatter", x="median_income", y="median_house_value",
              alpha=0.1)
-# plt.show()
+#plt.show()
 
 ### Experimenting with attribute combinations
 housing["rooms_per_household"] = housing["total_rooms"] / housing["households"]
@@ -239,6 +239,9 @@ num_pipeline = Pipeline([
     ('attribs_adder', CombinedAttributesAdder()),
     ('std_scaler', StandardScaler())
 ])
+housing_num_tr = num_pipeline.fit_transform(housing_num)
+print('housing num:', housing_num)
+print('housing_num_tr:',housing_num_tr)
 
 ## COLUMN TRANSFORMER
 from sklearn.compose import ColumnTransformer
@@ -253,7 +256,7 @@ full_pipeline = ColumnTransformer([
 
 housing_prepared = full_pipeline.fit_transform(housing)
 
-print(housing_prepared)
+print('housing_prepared:',housing_prepared)
 
 ### SELECT AND TRAIN A MODEL
 
@@ -317,3 +320,61 @@ lin_scores = cross_val_score(lin_reg, housing_prepared, housing_labels, scoring=
 
 lin_rmse_scores = np.sqrt(-lin_scores)
 display_scores(lin_rmse_scores)
+
+
+## Lets try one last model: RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor
+forest_reg = RandomForestRegressor()
+forest_reg.fit(housing_prepared, housing_labels)
+housing_predictions = forest_reg.predict(housing_prepared)
+forest_mse = mean_squared_error(housing_labels, housing_predictions)
+forest_rmse = np.sqrt(forest_mse)
+print('forest_rmese:', forest_rmse)
+
+scores = cross_val_score(forest_reg, housing_prepared, housing_labels,
+                         scoring="neg_mean_squared_error", cv=10)
+forest_rmse_scores = np.sqrt(-scores)
+
+display_scores(forest_rmse_scores)
+
+
+###### FINE-TUNE A MODEL
+
+## GRID SEARCH
+from sklearn.model_selection import GridSearchCV
+
+param_grid = [
+    {'n_estimators': [3,10,30], 'max_features': [2,4,6,8]},
+    {'bootstrap': [False], 'n_estimators': [3,10], 'max_features':[2,3,4]}
+]
+
+forest_reg = RandomForestRegressor()
+
+grid_search = GridSearchCV(forest_reg, param_grid, cv=5,
+                           scoring='neg_mean_squared_error',
+                           return_train_score=True)
+
+grid_search.fit(housing_prepared, housing_labels)
+
+print(grid_search.best_params_)
+
+print("Grid Search - Best estimator",grid_search.best_estimator_)
+
+cvres = grid_search.cv_results_
+for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
+    print(np.sqrt(-mean_score),params)
+
+
+# Analyze the best models and their errors
+feature_importances = grid_search.best_estimator_.feature_importances_
+print("Feature Importances", feature_importances)
+
+
+# Let's display thes importance scores next to their corresponding attribute names
+
+extra_attribs = ["rooms_per_hhold","pop_per_hhold","bedrooms_per_room"]
+cat_encoder = full_pipeline.named_transformers_["cat"]
+cat_one_hot_attribs = list(cat_encoder.categories_[0])
+attributes = num_attribs + extra_attribs + cat_one_hot_attribs
+sorted(zip(feature_importances, attributes), reverse=True)
+
